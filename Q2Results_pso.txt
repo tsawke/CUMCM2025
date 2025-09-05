@@ -1,0 +1,28 @@
+================================================================================
+Q2 Optimization Results Report - PSO
+================================================================================
+
+Calculation Parameters:
+----------------------------------------
+pop: 64
+iter: 60
+topk: 12
+coarse: {'dt': 0.004, 'nphi': 240, 'nz': 7}
+final: {'dt': 0.001, 'nphi': 480, 'nz': 9}
+workers: 28
+speed_range: [70.0, 140.0]
+search_space: {'heading': '[0,2pi)', 'speed': '[70,140]', 'drop': '[0,60.000]', 'fuse': '[0,18]'}
+Algorithm: pso
+
+Best Solution:
+----------------------------------------
+Occlusion duration = 4.474000 seconds
+Heading (rad) = 3.128803
+Speed (m/s)  = 118.116241
+Drop time (s) = 1.001110
+Fuse delay (s)= 3.779650
+Explosion point = (17235.360806, 7.222215, 1729.999793)
+Missile hit time ≈ 66.999171 seconds
+
+
+================================================================================

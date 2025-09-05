@@ -1,0 +1,28 @@
+================================================================================
+Q2 Optimization Results Report - PATTERN
+================================================================================
+
+Calculation Parameters:
+----------------------------------------
+pop: 64
+iter: 60
+topk: 12
+coarse: {'dt': 0.004, 'nphi': 240, 'nz': 7}
+final: {'dt': 0.001, 'nphi': 480, 'nz': 9}
+workers: 28
+speed_range: [70.0, 140.0]
+search_space: {'heading': '[0,2pi)', 'speed': '[70,140]', 'drop': '[0,60.000]', 'fuse': '[0,18]'}
+Algorithm: pattern
+
+Best Solution:
+----------------------------------------
+Occlusion duration = 4.486000 seconds
+Heading (rad) = 3.126663
+Speed (m/s)  = 123.217536
+Drop time (s) = 0.500000
+Fuse delay (s)= 3.550234
+Explosion point = (17300.995815, 7.450646, 1738.239623)
+Missile hit time ≈ 66.999171 seconds
+
+
+================================================================================
