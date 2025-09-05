@@ -169,7 +169,7 @@ class UAVPlan:
 
 class GeneticAlgorithmQ2:
     """遗传算法求解第二问"""
-    def __init__(self, population_size=50, generations=100, mutation_rate=0.1, crossover_rate=0.8):
+    def __init__(self, population_size=20, generations=30, mutation_rate=0.1, crossover_rate=0.8):
         self.population_size = population_size
         self.generations = generations
         self.mutation_rate = mutation_rate
@@ -205,10 +205,10 @@ class GeneticAlgorithmQ2:
 
         return total_coverage
 
-    def selection(self):
-        """轮盘赌选择（串行评估，避免多进程嵌套）"""
-        # 串行评估所有个体的适应度，避免多进程嵌套问题
-        fitness_values = [self.evaluate_fitness(ind) for ind in self.population]
+    def selection(self, fitness_values=None):
+        """轮盘赌选择（使用已计算的适应度值）"""
+        if fitness_values is None:
+            fitness_values = [self.evaluate_fitness(ind) for ind in self.population]
 
         total_fitness = sum(max(0, f) for f in fitness_values)
         if total_fitness == 0:
@@ -248,8 +248,10 @@ class GeneticAlgorithmQ2:
         self.population = [self.create_individual() for _ in range(self.population_size)]
 
         for generation in range(self.generations):
-            # 评估种群
-            fitness_values = [self.evaluate_fitness(ind) for ind in self.population]
+            # 使用线程池并行评估种群（避免多进程嵌套）
+            with ThreadPoolExecutor(max_workers=min(len(self.population), os.cpu_count())) as executor:
+                futures = [executor.submit(self.evaluate_fitness, ind) for ind in self.population]
+                fitness_values = [future.result() for future in futures]
 
             # 更新最佳个体
             current_best_idx = np.argmax(fitness_values)
@@ -264,7 +266,7 @@ class GeneticAlgorithmQ2:
             new_population = [self.best_individual[:]]  # 精英保留
 
             while len(new_population) < self.population_size:
-                parent1, parent2 = self.selection()
+                parent1, parent2 = self.selection(fitness_values)  # 传递已计算的fitness_values
                 child1, child2 = self.crossover(parent1, parent2)
                 self.mutation(child1)
                 self.mutation(child2)
@@ -273,14 +275,15 @@ class GeneticAlgorithmQ2:
             self.population = new_population[:self.population_size]
 
             progress = (generation + 1) / self.generations * 100
-            if generation % 5 == 0 or generation == self.generations - 1:
-                print(f"   📊 第{generation+1}/{self.generations}代 ({progress:.1f}%) | 最佳遮蔽时长: {current_best_fitness:.3f}s")
+            # 每5%显示进度
+            if int(progress) % 5 == 0 or generation == self.generations - 1:
+                print(f"   [进度] 第{generation+1}/{self.generations}代 ({progress:.1f}%) | 最佳遮蔽时长: {current_best_fitness:.3f}s")
 
         return self.best_individual, self.evaluate_fitness(self.best_individual)
 
 class ParticleSwarmQ2:
     """粒子群优化求解第二问"""
-    def __init__(self, swarm_size=30, max_iterations=100, w=0.9, c1=2.0, c2=2.0):
+    def __init__(self, swarm_size=15, max_iterations=30, w=0.9, c1=2.0, c2=2.0):
         self.swarm_size = swarm_size
         self.max_iterations = max_iterations
         self.w = w
@@ -290,6 +293,25 @@ class ParticleSwarmQ2:
         self.global_best_position = None
         self.global_best_fitness = float('-inf')
         self.fitness_history = []
+
+    def evaluate_fitness(self, genes):
+        """评估适应度：总遮蔽时长（串行计算）"""
+        total_coverage = 0.0
+
+        for i, uav_id in enumerate(ALL_UAVS):
+            heading = genes[i * 2]
+            t_drop = genes[i * 2 + 1]
+
+            # 约束检查
+            if t_drop < 0 or t_drop > 10:
+                return -1000
+
+            # 串行计算每个无人机的遮蔽时长
+            plan = UAVPlan(uav_id, heading, t_drop)
+            coverage = plan.calculate_coverage()
+            total_coverage += coverage
+
+        return total_coverage
 
     def create_particle(self):
         """创建粒子：10个维度（5架无人机×2参数）"""
@@ -304,9 +326,8 @@ class ParticleSwarmQ2:
                 'best_position': position[:], 'best_fitness': float('-inf')}
 
     def evaluate_particle(self, particle):
-        """评估粒子适应度（使用遗传算法类的评估方法）"""
-        ga_temp = GeneticAlgorithmQ2()
-        return ga_temp.evaluate_fitness(particle['position'])
+        """评估粒子适应度"""
+        return self.evaluate_fitness(particle['position'])
 
     def update_velocity(self, particle):
         """更新粒子速度"""
@@ -357,8 +378,9 @@ class ParticleSwarmQ2:
             self.fitness_history.append(self.global_best_fitness)
 
             progress = (iteration + 1) / self.max_iterations * 100
-            if iteration % 5 == 0 or iteration == self.max_iterations - 1:
-                print(f"   📊 第{iteration+1}/{self.max_iterations}次迭代 ({progress:.1f}%) | 全局最佳遮蔽时长: {self.global_best_fitness:.3f}s")
+            # 每5%显示进度
+            if int(progress) % 5 == 0 or iteration == self.max_iterations - 1:
+                print(f"   [进度] 第{iteration+1}/{self.max_iterations}次迭代 ({progress:.1f}%) | 全局最佳遮蔽时长: {self.global_best_fitness:.3f}s")
 
         return self.global_best_position, self.global_best_fitness
 
@@ -415,9 +437,10 @@ class GridSearchQ2:
                     best_fitness = fitness
                     best_solution = genes[:]
 
-            if (i // batch_size + 1) % 10 == 0:
-                progress = min(i + batch_size, len(combinations)) / len(combinations) * 100
-                print(f"   📊 已处理 {min(i + batch_size, len(combinations))}/{len(combinations)} 组合 ({progress:.1f}%) | 当前最佳遮蔽时长: {best_fitness:.3f}s")
+            progress = min(i + batch_size, len(combinations)) / len(combinations) * 100
+            # 每5%显示进度
+            if int(progress) % 5 == 0 or i + batch_size >= len(combinations):
+                print(f"   [进度] 已处理 {min(i + batch_size, len(combinations))}/{len(combinations)} 组合 ({progress:.1f}%) | 当前最佳遮蔽时长: {best_fitness:.3f}s")
 
         return best_solution, best_fitness
 
@@ -428,136 +451,160 @@ def solve_problem2():
     print("=" * 80)
     print("CUMCM2025 第二问：多无人机协同干扰优化")
     print("=" * 80)
-    print("📋 优化目标：最大化5架无人机对M1导弹的总遮蔽时长")
-    print("🎯 优化变量：每架无人机的航向角和投放时间")
-    print("⚡ 使用多线程并行计算，充分利用CPU资源")
+    print("[目标] 优化目标：最大化5架无人机对M1导弹的总遮蔽时长")
+    print("[变量] 优化变量：每架无人机的航向角和投放时间")
+    print(f"[系统] 检测到 {os.cpu_count()} 个CPU核心")
+    print("[计算] 使用多线程并行计算，充分利用CPU资源")
     print("=" * 80)
+
+    # 参数验证
+    if len(ALL_UAVS) != 5:
+        print(f"[警告] 无人机数量为{len(ALL_UAVS)}，期望为5架")
+    if MISSILE_SPEED <= 0:
+        raise ValueError("[错误] 导弹速度必须大于0")
+    if UAV_SPEED <= 0:
+        raise ValueError("[错误] 无人机速度必须大于0")
 
     start_time = time.time()
     total_steps = 3  # 三种优化算法
     current_step = 0
 
-    # 方法1：遗传算法
-    current_step += 1
-    print(f"\n🔍 [{current_step}/{total_steps}] 方法1：遗传算法优化")
-    print(f"   使用 {os.cpu_count()} CPU核心 | 种群大小: 30 | 迭代代数: 50")
-    ga_start = time.time()
-    ga = GeneticAlgorithmQ2(population_size=30, generations=50)
-    ga_solution, ga_fitness = ga.evolve()
-    ga_time = time.time() - ga_start
-    print(".3f"    print(".3f"
-    # 方法2：粒子群优化
-    current_step += 1
-    print(f"\n🔍 [{current_step}/{total_steps}] 方法2：粒子群优化")
-    print(f"   使用 {os.cpu_count()} CPU核心 | 粒子数量: 25 | 迭代代数: 50")
-    pso_start = time.time()
-    pso = ParticleSwarmQ2(swarm_size=25, max_iterations=50)
-    pso_solution, pso_fitness = pso.optimize()
-    pso_time = time.time() - pso_start
-    print(".3f"    print(".3f"
-    # 方法3：网格搜索（优化规模）
-    current_step += 1
-    print(f"\n🔍 [{current_step}/{total_steps}] 方法3：网格搜索")
-    print(f"   使用 {os.cpu_count()} CPU核心 | 航向网格: 4×4×4×4×4 | 时间网格: 3×3×3×3×3")
-    gs_start = time.time()
-    gs = GridSearchQ2(n_heading=4, n_time=3)
-    gs_solution, gs_fitness = gs.search()
-    gs_time = time.time() - gs_start
-    print(".3f"    print(".3f"
+    try:
+        # 方法1：遗传算法
+        current_step += 1
+        print(f"\n[算法 {current_step}] 方法1：遗传算法优化")
+        print(f"   使用 {os.cpu_count()} CPU核心 | 种群大小: 20 | 迭代代数: 30")
+        ga_start = time.time()
+        ga = GeneticAlgorithmQ2(population_size=20, generations=30)
+        ga_solution, ga_fitness = ga.evolve()
+        ga_time = time.time() - ga_start
+        print(".3f")
+        print(".3f")
 
-    # 选择最佳结果
-    print("
-🎯 正在比较三种算法结果...")
-    results = [
-        ("遗传算法", ga_solution, ga_fitness),
-        ("粒子群优化", pso_solution, pso_fitness),
-        ("网格搜索", gs_solution, gs_fitness)
-    ]
+        # 方法2：粒子群优化
+        current_step += 1
+        print(f"\n[算法 {current_step}] 方法2：粒子群优化")
+        print(f"   使用 {os.cpu_count()} CPU核心 | 粒子数量: 15 | 迭代代数: 30")
+        pso_start = time.time()
+        pso = ParticleSwarmQ2(swarm_size=15, max_iterations=30)
+        pso_solution, pso_fitness = pso.optimize()
+        pso_time = time.time() - pso_start
+        print(".3f")
+        print(".3f")
 
-    best_method, best_solution, best_fitness = max(results, key=lambda x: x[2])
+        # 方法3：网格搜索（优化规模）
+        current_step += 1
+        print(f"\n[算法 {current_step}] 方法3：网格搜索")
+        print(f"   使用 {os.cpu_count()} CPU核心 | 航向网格: 4×4×4×4×4 | 时间网格: 3×3×3×3×3")
+        gs_start = time.time()
+        gs = GridSearchQ2(n_heading=4, n_time=3)  # 简化的网格密度
+        gs_solution, gs_fitness = gs.search()
+        gs_time = time.time() - gs_start
+        print(".3f")
+        print(".3f")
 
-    print("
-🏆 算法比较结果:"    print(f"   遗传算法: {ga_fitness:.3f}s (耗时: {ga_time:.1f}s)")
-    print(f"   粒子群优化: {pso_fitness:.3f}s (耗时: {pso_time:.1f}s)")
-    print(f"   网格搜索: {gs_fitness:.3f}s (耗时: {gs_time:.1f}s)")
-    print("
-✨ 最优算法: {best_method}"    print(".3f"
+        # 选择最佳结果
+        print("\n[比较] 正在比较三种算法结果...")
+        results = [
+            ("遗传算法", ga_solution, ga_fitness),
+            ("粒子群优化", pso_solution, pso_fitness),
+            ("网格搜索", gs_solution, gs_fitness)
+        ]
 
-    # 生成详细结果
-    print("
-📊 正在生成最终优化结果...")
-    results_data = []
-    total_coverage = 0.0
+        best_method, best_solution, best_fitness = max(results, key=lambda x: x[2])
 
-    for i, uav_id in enumerate(ALL_UAVS):
-        heading = best_solution[i * 2]
-        t_drop = best_solution[i * 2 + 1]
+        print("\n[结果] 算法比较结果:")
+        print(f"   遗传算法: {ga_fitness:.3f}s (耗时: {ga_time:.1f}s)")
+        print(f"   粒子群优化: {pso_fitness:.3f}s (耗时: {pso_time:.1f}s)")
+        print(f"   网格搜索: {gs_fitness:.3f}s (耗时: {gs_time:.1f}s)")
+        print(f"\n[最优] 最优算法: {best_method}")
+        print(".3f")
 
-        plan = UAVPlan(uav_id, heading, t_drop)
-        coverage = plan.calculate_coverage()
-        total_coverage += coverage
+        # 生成详细结果
+        print("\n[生成] 正在生成最终优化结果...")
+        results_data = []
+        total_coverage = 0.0
 
-        # 计算投放和起爆位置
-        drop_pos, _ = UavStateHorizontal(t_drop, FY_INIT[uav_id], UAV_SPEED, heading)
-        expl_pos = ExplosionPoint(heading, t_drop, FUSE_DELAY_TIME, uav_id)
+        for i, uav_id in enumerate(ALL_UAVS):
+            print(f"   [计算] 正在计算{uav_id}的遮蔽效果...")
+            heading = best_solution[i * 2]
+            t_drop = best_solution[i * 2 + 1]
 
-        result = {
-            "无人机编号": uav_id,
-            "航向角(度)": math.degrees(heading) % 360,
-            "投放时间(s)": t_drop,
-            "起爆时间(s)": plan.t_explode,
-            "投放点x(m)": drop_pos[0],
-            "投放点y(m)": drop_pos[1],
-            "投放点z(m)": FY_INIT[uav_id][2],
-            "起爆点x(m)": expl_pos[0],
-            "起爆点y(m)": expl_pos[1],
-            "起爆点z(m)": expl_pos[2],
-            "遮蔽时长(s)": coverage
+            plan = UAVPlan(uav_id, heading, t_drop)
+            coverage = plan.calculate_coverage()
+            total_coverage += coverage
+
+            # 计算投放和起爆位置
+            drop_pos, _ = UavStateHorizontal(t_drop, FY_INIT[uav_id], UAV_SPEED, heading)
+            expl_pos = ExplosionPoint(heading, t_drop, FUSE_DELAY_TIME, uav_id)
+
+            result = {
+                "无人机编号": uav_id,
+                "航向角(度)": math.degrees(heading) % 360,
+                "投放时间(s)": t_drop,
+                "起爆时间(s)": plan.t_explode,
+                "投放点x(m)": drop_pos[0],
+                "投放点y(m)": drop_pos[1],
+                "投放点z(m)": FY_INIT[uav_id][2],
+                "起爆点x(m)": expl_pos[0],
+                "起爆点y(m)": expl_pos[1],
+                "起爆点z(m)": expl_pos[2],
+                "遮蔽时长(s)": coverage
+            }
+            results_data.append(result)
+
+            progress = (i + 1) / len(ALL_UAVS) * 100
+            # 每25%显示进度（因为只有5个无人机）
+            if int(progress) % 25 == 0 or i == len(ALL_UAVS) - 1:
+                print(f"   [进度] 已完成 {i+1}/{len(ALL_UAVS)} 架无人机 ({progress:.1f}%) | 总遮蔽时长: {total_coverage:.3f}s")
+
+        print("\n[完成] 所有无人机结果生成完成！")
+
+        # 保存结果
+        print("\n[保存] 正在保存优化结果...")
+        print("   [文件] 保存CSV文件...")
+        df = pd.DataFrame(results_data)
+        df.to_csv("q2_solution.csv", index=False, encoding='utf-8-sig')
+
+        print("   [文件] 保存Excel文件...")
+        df.to_excel("q2_solution.xlsx", index=False)
+
+        print("   [文件] 保存汇总信息...")
+        summary = {
+            "optimization_method": best_method,
+            "total_coverage_time": best_fitness,
+            "computation_time": time.time() - start_time,
+            "uav_count": 5,
+            "target_missile": "M1",
+            "constraints": {
+                "heading_range": "[0, 2π)",
+                "time_range": "[0, 10]s"
+            }
         }
-        results_data.append(result)
 
-        progress = (i + 1) / len(ALL_UAVS) * 100
-        print(f"   📈 [{i+1}/{len(ALL_UAVS)}] {uav_id}: 航向={result['航向角(度)']:.1f}°, 投放={t_drop:.2f}s, 遮蔽={coverage:.3f}s ({progress:.1f}%)")
+        with open("q2_summary.json", "w", encoding="utf-8") as f:
+            json.dump(summary, f, ensure_ascii=False, indent=2)
 
-    print("
-✅ 结果生成完成！"
+        total_time = time.time() - start_time
+        print("[完成] 所有结果保存完成！")
+        print("=" * 80)
+        print(f"[输出] 生成文件:")
+        print("- q2_solution.csv (详细结果表格)")
+        print("- q2_solution.xlsx (Excel格式)")
+        print("- q2_summary.json (汇总信息)")
+        print(".3f")
+        print("=" * 80)
 
-    # 保存结果
-    print("
-💾 正在保存优化结果...")
-    print("   📄 保存CSV文件...")
-    df = pd.DataFrame(results_data)
-    df.to_csv("q2_solution.csv", index=False, encoding='utf-8-sig')
+        return results_data, summary
 
-    print("   📊 保存Excel文件...")
-    df.to_excel("q2_solution.xlsx", index=False)
-
-    print("   📋 保存汇总信息...")
-    summary = {
-        "optimization_method": best_method,
-        "total_coverage_time": best_fitness,
-        "computation_time": time.time() - start_time,
-        "uav_count": 5,
-        "target_missile": "M1",
-        "constraints": {
-            "heading_range": "[0, 2π)",
-            "time_range": "[0, 10]s"
-        }
-    }
-
-    with open("q2_summary.json", "w", encoding="utf-8") as f:
-        json.dump(summary, f, ensure_ascii=False, indent=2)
-
-    total_time = time.time() - start_time
-    print("
-🎉 所有结果保存完成！"    print("=" * 80)
-    print(f"📁 生成文件:")
-    print("- q2_solution.csv (详细结果表格)")
-    print("- q2_solution.xlsx (Excel格式)")
-    print("- q2_summary.json (汇总信息)")
-    print(".3f"    print("=" * 80)
-
-    return results_data, summary
+    except KeyboardInterrupt:
+        print("\n[中断] 用户中断了优化过程")
+        return [], {"status": "interrupted"}
+    except Exception as e:
+        print(f"\n[错误] 优化过程中出现异常: {e}")
+        import traceback
+        traceback.print_exc()
+        return [], {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     solve_problem2()

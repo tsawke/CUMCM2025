@@ -47,12 +47,31 @@ def dist_point_to_segment(P, A, B):
     Q = A + u * AB
     return np.linalg.norm(P - Q)
 
+def dist_sphere_to_segment(C, r, A, B):
+    """
+    计算球体(中心C, 半径r)到线段AB的最小距离
+
+    返回值:
+    0或负数: 球体与线段相交或相切(有遮挡)
+    正数: 球体与线段不相交的距离
+    """
+    # 计算球心到线段的距离
+    dist_to_segment = dist_point_to_segment(C, A, B)
+
+    # 如果球心到线段的距离 <= 半径，说明球体与线段相交
+    if dist_to_segment <= r:
+        return 0.0  # 有遮挡
+
+    # 如果球心到线段的距离 > 半径，说明球体与线段不相交
+    return dist_to_segment - r
+
 def d_to_sightline(t):
     C = cloud_center(t)
     M = missile_pos(t)
-    return dist_point_to_segment(C, M, T)
+    # 计算球体(云团)到线段(瞄准线)的距离
+    return dist_sphere_to_segment(C, R, M, T)
 
-def refine_crossing(t_lo, t_hi, target=R, tol=1e-7, iters=80):
+def refine_crossing(t_lo, t_hi, target=0.0, tol=1e-7, iters=80):
     f = lambda x: d_to_sightline(x) - target
     flo, fhi = f(t_lo), f(t_hi)
     if flo == 0.0: return t_lo
@@ -75,22 +94,11 @@ def compute_intervals(dt=0.01):
     t1 = min(t_burst + cloud_effect, t_hit)
     ts = np.arange(t0, t1 + 1e-12, dt)
 
-    # 向量化距离
-    Cx = PB[0] * np.ones_like(ts)
-    Cy = PB[1] * np.ones_like(ts)
-    Cz = PB[2] - cloud_sink * (ts - t_burst)
-    C = np.stack([Cx, Cy, Cz], axis=1)  # (T,3)
+    # 计算每个时刻球体到瞄准线的距离
+    distances = np.array([d_to_sightline(t) for t in ts])
 
-    M = M0[None, :] + ts[:, None] * v_m[None, :]  # (T,3)
-    AB = (T[None, :] - M)                         # (T,3)
-    AB2 = np.sum(AB * AB, axis=1) + 1e-12
-    AP = C - M
-    u = np.sum(AP * AB, axis=1) / AB2
-    u = np.clip(u, 0.0, 1.0)
-    Q = M + u[:, None] * AB
-    dist = np.linalg.norm(C - Q, axis=1)
-
-    inside = dist <= R
+    # 遮挡判断：距离 <= 0 表示球体与瞄准线相交
+    inside = distances <= 0.0
     edges = np.diff(inside.astype(np.int8))
     enters = np.where(edges == 1)[0] + 1  # 进入索引
     exits  = np.where(edges == -1)[0] + 1 # 退出索引
@@ -99,7 +107,6 @@ def compute_intervals(dt=0.01):
 
     # 开头就在内
     if inside[0]:
-        # 精化从 ts[0]-dt 到 ts[0]（近似），若无法精化，取 ts[0]
         t_enter = ts[0]
         if len(exits) > 0:
             i = exits[0]
@@ -123,8 +130,6 @@ def compute_intervals(dt=0.01):
             t_exit = refine_crossing(ts[i_ex-1], ts[i_ex]) or ts[i_ex]
             exits = exits[exits != i_ex]
         intervals.append((t_enter, t_exit))
-
-    # 如果还残留退出（理论上不会），忽略
 
     total = sum(max(0.0, b - a) for a, b in intervals)
     return intervals, total

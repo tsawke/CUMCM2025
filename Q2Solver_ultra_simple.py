@@ -38,11 +38,11 @@ class SimpleGA:
         return population[0], max(fitnesses)
 
 def test():
-    print("🧪 超简化Q2Solver测试")
+    print("[测试] 超简化Q2Solver测试")
     ga = SimpleGA()
     solution, fitness = ga.evolve()
-    print(f"✅ 测试成功！最佳解: {solution}, 适应度: {fitness:.3f}")
-    print("🎉 修复后的Q2Solver基本功能正常！")
+    print(f"[成功] 测试成功！最佳解: {solution}, 适应度: {fitness:.3f}")
+    print("[完成] 修复后的Q2Solver基本功能正常！")
 
 if __name__ == "__main__":
     test()
