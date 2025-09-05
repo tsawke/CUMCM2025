@@ -1,0 +1,2 @@
+# CUMCM2025
+CUMCM2025 Solution
