@@ -1,0 +1,24 @@
+{
+  "cover_seconds": 0.0,
+  "params": {
+    "UAV": "FY1",
+    "UAV_speed": 120.0,
+    "T_drop": 1.5,
+    "tau": 3.6,
+    "true_target_xy": [
+      0.0,
+      200.0
+    ],
+    "fake_target_xy": [
+      0.0,
+      -200.0
+    ],
+    "cloud": {
+      "radius": 10.0,
+      "active": 20.0,
+      "sink": 3.0
+    },
+    "missile_speed": 300.0,
+    "dt": 0.02
+  }
+}

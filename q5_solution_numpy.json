@@ -1,0 +1,10 @@
+{
+  "objective_seconds": 0.0,
+  "per_missile_seconds": {
+    "M1": 3.4000000000000004,
+    "M2": 0.0,
+    "M3": 0.0
+  },
+  "dt": 0.1,
+  "chosen_events": 1
+}

@@ -1,0 +1,5 @@
+{
+  "objective_seconds": 6.2,
+  "chosen_events": 9,
+  "solver": "milp"
+}

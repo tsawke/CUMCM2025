@@ -1,0 +1,8 @@
+{
+  "per_missile_seconds": {
+    "M1": 2.6,
+    "M2": 2.5,
+    "M3": 2.4000000000000004
+  },
+  "simultaneous_seconds": 0.4
+}
