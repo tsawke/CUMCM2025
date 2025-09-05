@@ -30,8 +30,8 @@
 @REM   --sa-iters 500 ^
 @REM   --probe 128
 
-python Q2Solver_v12.py ^
-  --algo pattern ^
+python Q2Solver_v13.py ^
+  --algo all ^
   --pop 64 --iter 60 --topk 12 --workers auto ^
   --dt-coarse 0.004 --nphi-coarse 240 --nz-coarse 7 ^
   --dt-final  0.001 --nphi-final  480 --nz-final  9 ^

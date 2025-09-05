@@ -16,12 +16,12 @@ Algorithm: hybrid
 
 Best Solution:
 ----------------------------------------
-Occlusion duration = 4.578000 seconds
-Heading (rad) = 0.070674
-Speed (m/s)  = 73.924353
-Drop time (s) = 1.753485
-Fuse delay (s)= 0.000000
-Explosion point = (17929.301638, 9.153545, 1800.000000)
+Occlusion duration = 4.581000 seconds
+Heading (rad) = 0.122014
+Speed (m/s)  = 79.775608
+Drop time (s) = 0.240000
+Fuse delay (s)= 0.907072
+Explosion point = (17890.828050, 11.137589, 1795.968380)
 Missile hit time ≈ 66.999171 seconds
 
 

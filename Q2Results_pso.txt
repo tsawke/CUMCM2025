@@ -16,12 +16,12 @@ Algorithm: pso
 
 Best Solution:
 ----------------------------------------
-Occlusion duration = 4.474000 seconds
-Heading (rad) = 3.128803
-Speed (m/s)  = 118.116241
-Drop time (s) = 1.001110
-Fuse delay (s)= 3.779650
-Explosion point = (17235.360806, 7.222215, 1729.999793)
+Occlusion duration = 4.517000 seconds
+Heading (rad) = 3.113965
+Speed (m/s)  = 110.156316
+Drop time (s) = 0.050664
+Fuse delay (s)= 3.111843
+Explosion point = (17451.762790, 9.623459, 1752.550510)
 Missile hit time ≈ 66.999171 seconds
 
 

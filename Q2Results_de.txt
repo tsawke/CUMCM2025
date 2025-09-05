@@ -17,8 +17,8 @@ Algorithm: de
 Best Solution:
 ----------------------------------------
 Occlusion duration = 2.556000 seconds
-Heading (rad) = 5.217043
-Speed (m/s)  = 104.243083
+Heading (rad) = 5.150543
+Speed (m/s)  = 140.000000
 Drop time (s) = 0.000000
 Fuse delay (s)= 0.000000
 Explosion point = (17800.000000, 0.000000, 1800.000000)
