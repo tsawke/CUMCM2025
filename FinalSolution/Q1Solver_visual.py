@@ -3,6 +3,7 @@ import math
 import time
 import argparse
 import numpy as np
+import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
 # constants
@@ -149,6 +150,12 @@ def CalExtreme(dt = 0.0005, nphi = 960, nz = 13, backend = "process", workers = 
     seconds = float(np.count_nonzero(maskTotal) * dt)
     tB = time.time()
     print(f"[Q1] Occlusion time (strict cone) = {seconds:.6f} s | Runtime {tB - tA:.2f}s")
+
+    # Generate convergence visualization
+    print("[Q1] Generating convergence plot...")
+    GenPlot(tGrid, maskTotal, seconds, dt)
+    print("[Q1] Convergence plot generated")
+
     return seconds, explPos, hitTime
 
 def main():
@@ -203,6 +210,53 @@ def main():
     print(f"[Info] Explosion point = ({expl[0]:.6f}, {expl[1]:.6f}, {expl[2]:.6f})")
     print(f"[Info] Missile hit time approx= {hit:.6f} s")
     print(f"[Info] Results saved to Q1Results.txt")
+
+
+def GenPlot(tGrid, maskTotal, seconds, dt):
+    # Calculate cumulative occlusion time
+    cumTime = []
+    curTime = 0.0
+
+    for i, occluded in enumerate(maskTotal):
+        if occluded:
+            curTime += dt
+        cumTime.append(curTime)
+
+    # Create plot
+    plt.figure(figsize = (12, 8))
+
+    # Plot cumulative occlusion time
+    plt.subplot(2, 1, 1)
+    plt.plot(tGrid, cumTime, 'b-', linewidth = 2, label = 'Cumulative Occlusion Time')
+    plt.axhline(y = seconds, color = 'r', linestyle = '--', linewidth = 2, label = f'Final Value: {seconds:.6f}s')
+    plt.fill_between(tGrid, 0, cumTime, alpha = 0.3, color = 'blue')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Occlusion Duration (s)')
+    plt.title('Q1 Occlusion Time Convergence')
+    plt.legend()
+    plt.grid(True, alpha = 0.3)
+
+    # Plot occlusion status(binary)
+    plt.subplot(2, 1, 2)
+    plt.plot(tGrid, maskTotal.astype(int), 'g-', linewidth = 1, alpha = 0.7)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Occlusion Status (0/1)')
+    plt.title('Occlusion Status Over Time')
+    plt.ylim(-0.1, 1.1)
+    plt.grid(True, alpha = 0.3)
+
+    # Add label for final result
+    plt.figtext(0.02,
+                0.98,
+                f'Final Occlusion Duration: {seconds:.6f} seconds',
+                fontsize = 12,
+                fontweight = 'bold',
+                bbox = dict(boxstyle = "round,pad=0.3", facecolor = "yellow", alpha = 0.8))
+
+    plt.tight_layout()
+    plt.savefig('Q1ConvergencePlot.png', dpi = 300, bbox_inches = 'tight')
+
+    print(f"[Q1] Convergence plot saved as Q1ConvergencePlot.png")
 
 if __name__ == "__main__":
     main()

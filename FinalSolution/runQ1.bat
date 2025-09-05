@@ -1,1 +1,1 @@
-python Q1Solver.py --dt 0.00008 --nphi 2400 --nz 31 --backend process --chunk 2000 --block 32768
+python Q1Solver_visual.py --dt 0.00008 --nphi 2400 --nz 31 --backend process --chunk 2000 --block 32768
