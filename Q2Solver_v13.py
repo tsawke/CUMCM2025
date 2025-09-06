@@ -1,3 +1,37 @@
+"""
+
+
+python Q2Solver_v13.py ^
+  --algo all ^
+  --pop 48 --iter 40 --topk 10 --workers auto ^
+  --dt-coarse 0.003 --nphi-coarse 360 --nz-coarse 9 ^
+  --dt-final  0.001 --nphi-final  720 --nz-final  11 ^
+  --sa-iters 2000 --sa-batch 16 --sa-chains 4 ^
+  --probe 192
+
+
+python Q2Solver_v13.py ^
+  --algo all ^
+  --pop 64 --iter 60 --topk 12 --workers auto ^
+  --dt-coarse 0.004 --nphi-coarse 240 --nz-coarse 7 ^
+  --dt-final  0.001 --nphi-final  480 --nz-final  9 ^
+  --sa-iters 3000 --sa-batch 24 --sa-chains 6 ^
+  --probe 256
+
+python Q2Solver_v13.py ^
+  --algo all ^
+  --pop 96 --iter 80 --topk 16 --workers auto ^
+  --dt-coarse 0.002 --nphi-coarse 480 --nz-coarse 9 ^
+  --dt-final  0.0005 --nphi-final  960 --nz-final  13 ^
+  --sa-iters 8000 --sa-batch 32 --sa-chains 8 ^
+  --probe 384
+
+
+
+"""
+
+
+
 # -*- coding: utf-8 -*-
 """
 Q2_Optimizer_All.py

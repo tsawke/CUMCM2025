@@ -1,0 +1,13 @@
+python3 Q3Solver.py \
+  --dt 0.005 --nphi 360 --nz 7 \
+  --outer_backend process --search_workers $(nproc) \
+  --backend thread --workers 1 --chunk 2200 --block 4096 \
+  --heading_min_deg -2 --heading_max_deg 2 --heading_step_deg 0.5 \
+  --speed_min 120 --speed_max 140 --speed_step 10 \
+  --t1_min 0 --t1_max 6 --t1_step 1 \
+  --gap12_min 1 --gap12_max 4 --gap12_step 1 \
+  --gap23_min 1 --gap23_max 4 --gap23_step 1 \
+  --fuse_min 3 --fuse_max 8 --fuse_step 1 \
+  --stage2_enable --stage2_span_steps 1 \
+  --stage2_heading_step_deg 0.2 --stage2_speed_step 5 --stage2_t_step 0.5 --stage2_fuse_step 0.5 \
+  --stage2_batch_size 2000 --stage2_max_cands 8000

@@ -30,10 +30,19 @@
 @REM   --sa-iters 500 ^
 @REM   --probe 128
 
+@REM python Q2Solver_v13.py ^
+@REM   --algo all ^
+@REM   --pop 64 --iter 60 --topk 12 --workers auto ^
+@REM   --dt-coarse 0.004 --nphi-coarse 240 --nz-coarse 7 ^
+@REM   --dt-final  0.001 --nphi-final  480 --nz-final  9 ^
+@REM   --sa-iters 2000 ^
+@REM   --probe 256
+
+
 python Q2Solver_v13.py ^
-  --algo all ^
-  --pop 64 --iter 60 --topk 12 --workers auto ^
-  --dt-coarse 0.004 --nphi-coarse 240 --nz-coarse 7 ^
-  --dt-final  0.001 --nphi-final  480 --nz-final  9 ^
-  --sa-iters 2000 ^
-  --probe 256
+  --algo sa ^
+  --pop 48 --iter 40 --topk 10 --workers auto ^
+  --dt-coarse 0.003 --nphi-coarse 360 --nz-coarse 9 ^
+  --dt-final  0.001 --nphi-final  720 --nz-final  11 ^
+  --sa-iters 2000 --sa-batch 8 --sa-chains 2 ^
+  --probe 192

@@ -1,0 +1,34 @@
+Q5 Numba Solver Report
+======================================================================
+
+Args:
+{
+  "dt": 0.01,
+  "nphi": 720,
+  "nz": 11,
+  "refine_dt": 0.005,
+  "refine_nphi": 960,
+  "refine_nz": 13,
+  "fp32": false,
+  "use_numba": true,
+  "numba_threads": 128,
+  "sa_iters": 1200,
+  "sa_batch": 16,
+  "sa_restarts": 2,
+  "progress_every": 15,
+  "time_budget": null,
+  "lambda_overlap": 0.0,
+  "overlap_sigma": 2.5,
+  "xlsx": "result3.xlsx",
+  "report": "Result3_report.txt"
+}
+
+Total Occlusion = 11.090s
+Per Missile: M1=7.730s  M2=3.360s  M3=0.000s
+
+Solution:
+ FY1: heading 179.49°, speed 97.90, drops [1.1917010187950812, 18.800418219207316, 22.177963736280297]
+ FY2: heading 253.46°, speed 117.33, drops [5.476857003940214, 9.323700187728559, 10.323700187728559]
+ FY3: heading 201.36°, speed 136.01, drops [2.330750111833135, 5.442519998198659, 12.054324332964981]
+ FY4: heading 69.16°, speed 140.00, drops [0.22526156052227053, 4.861254825403986, 20.19632450252427]
+ FY5: heading 110.69°, speed 107.31, drops [6.639615200068506, 10.343912393277455, 16.41078685509388]

@@ -21,6 +21,7 @@ Heading (rad) = 0.122014
 Speed (m/s)  = 79.775608
 Drop time (s) = 0.240000
 Fuse delay (s)= 0.907072
+Drop point = (17819.003804, 2.330306, 1800.000000)
 Explosion point = (17890.828050, 11.137589, 1795.968380)
 Missile hit time ≈ 66.999171 seconds
 
