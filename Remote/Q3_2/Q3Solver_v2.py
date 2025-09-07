@@ -1,12 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Q3Solver_v3.py — Problem 3 (corrected version, matches Q3Drawer calculations)
-
-Fixed version that ensures calculated coverage time matches Q3Drawer's verification.
-Key fixes:
-1. Removed overly restrictive "cheap necessary test" that was skipping valid coverage
-2. Simplified evaluation logic to match Q3Drawer's approach
-3. Ensured consistent calculation methodology
+Q3Solver.py — Problem 3 (final, with cooperative masking, ground clipping and segment-occlusion)
 
 Maximize the total (not necessarily continuous) covered time by deploying 3 smoke bombs
 from UAV FY1 to interfere with missile M1.
@@ -16,7 +10,6 @@ Highlights:
 - Ground clipping: cloud ignored when cz(t) <= 0; also cap each bomb's effective interval at ground hit time
 - Physically correct default masking: segment–sphere intersection on M→P (use --masking_mode cone to revert)
 - Two-stage search + coordinate descent; two-level parallel; Excel & monotone convergence plot
-- **FIXED**: Calculation now matches Q3Drawer verification results
 """
 
 import os
@@ -72,6 +65,17 @@ def explosion_point(heading_rad: float, t_drop: float, fuse_delay: float, uav_sp
     ex_z  = drop_pos[2]  - dtype(0.5) * dtype(Q1.g) * (dtype(fuse_delay) ** 2)
     return np.array([ex_xy[0], ex_xy[1], ex_z], dtype=dtype), drop_pos
 
+def los_min_dist_to_point(m_pos: np.ndarray, tgt_pos: np.ndarray, c: np.ndarray) -> float:
+    """Minimum distance from point c to segment (m_pos → tgt_pos)."""
+    v = tgt_pos - m_pos
+    w = c - m_pos
+    vv = float(np.dot(v, v)) + 1e-12
+    t = float(np.dot(w, v) / vv)
+    if t < 0.0:   closest = m_pos
+    elif t > 1.0: closest = tgt_pos
+    else:         closest = m_pos + t * v
+    return float(np.linalg.norm(c - closest))
+
 def merge_intervals(intervals: List[Tuple[float,float]]) -> List[Tuple[float,float]]:
     if not intervals:
         return []
@@ -125,13 +129,13 @@ def segment_points_mask(m_pos: np.ndarray, pts: np.ndarray, c: np.ndarray, R: fl
 
     return inter | inside_P | (inside_M if isinstance(inside_M, np.bool_) or isinstance(inside_M, bool) else bool(inside_M))
 
-# ------------------ Inner time-chunk evaluation (FIXED) ------------------
-def eval_chunk_union_fixed(args):
+# ------------------ Inner time-chunk evaluation ------------------
+def eval_chunk_union(args):
     """
-    FIXED: Evaluate union mask over a time chunk using simplified logic that matches Q3Drawer.
-    Removed the overly restrictive "cheap necessary test" that was causing false negatives.
+    Evaluate union mask (and per-bomb masks) over a time chunk using cooperative masking.
+    Cheap necessary test before cone/segment check; ignore cloud if cz <= 0 (ground clipping).
     """
-    (idx0, t_chunk, bombs, t_expls, pts, margin, block, chunk_id, total_chunks, inner_log_every, masking_mode, strict_validation) = args
+    (idx0, t_chunk, bombs, t_expls, pts, margin, block, chunk_id, total_chunks, inner_log_every, masking_mode) = args  # CHG: +masking_mode
     n = len(t_chunk)
     out_union = np.zeros(n, dtype=bool)
     out_each  = [np.zeros(n, dtype=bool) for _ in bombs]
@@ -139,59 +143,47 @@ def eval_chunk_union_fixed(args):
     if inner_log_every > 0 and (chunk_id % inner_log_every == 0):
         info(f"Candidate: time-chunk {chunk_id}/{total_chunks}")
 
-    R = float(Q1.SMOG_R)
+    R = float(Q1.SMOG_R); Rm = R + float(margin)
 
     for i, t in enumerate(t_chunk):
         m_pos, _ = Q1.MissileState(float(t), Q1.M1_INIT)
 
         any_pts_mask = None
         for bi, (expl, texp) in enumerate(zip(bombs, t_expls)):
-            # Calculate cloud center with ground clipping
             cz = expl[2] - Q1.SMOG_SINK_SPEED * max(0.0, float(t) - texp)
-            if cz <= 0.0 + 1e-9:  # Ground clipping
+            if cz <= 0.0 + 1e-12:               # NEW: ground clipping per time
                 out_each[bi][i] = False
                 continue
-            
-            c = np.array([expl[0], expl[1], cz], dtype=expl.dtype)
+            c  = np.array([expl[0], expl[1], cz], dtype=expl.dtype)
 
-            # Calculate masking for this bomb
-            if masking_mode == "segment":
-                pts_in = segment_points_mask(m_pos, pts, c, R)
+            # cheap necessary test
+            if los_min_dist_to_point(m_pos, TRUE_TGT, c) > Rm:
+                cov_all = False
+                pts_in = None
             else:
-                pts_in = cone_points_in(m_pos, c, pts, R)
-            
-            # Check if this bomb alone covers ALL points (strict single-bomb coverage)
-            cov_all = bool(np.all(pts_in))
+                if masking_mode == "segment":   # NEW: default physically correct check
+                    pts_in = segment_points_mask(m_pos, pts, c, R)
+                else:
+                    pts_in = cone_points_in(m_pos, c, pts, R)
+                cov_all = bool(np.all(pts_in))
+
             out_each[bi][i] = cov_all
-            
-            # Union masking (OR operation)
-            any_pts_mask = pts_in if any_pts_mask is None else (any_pts_mask | pts_in)
+            if pts_in is not None:
+                any_pts_mask = pts_in if any_pts_mask is None else (any_pts_mask | pts_in)
 
-        # Complete coverage requires ALL points to be covered by at least one bomb
-        if strict_validation:
-            # Stricter validation: require more conservative coverage check
-            if any_pts_mask is not None:
-                # Additional check: ensure coverage is robust
-                coverage_ratio = float(np.sum(any_pts_mask)) / len(pts)
-                out_union[i] = coverage_ratio >= 0.95  # 95% coverage threshold
-            else:
-                out_union[i] = False
-        else:
-            out_union[i] = (any_pts_mask is not None) and bool(np.all(any_pts_mask))
+        out_union[i] = (any_pts_mask is not None) and bool(np.all(any_pts_mask))
 
     return idx0, out_union, out_each
 
 def mask_seconds(mask, dt) -> float:
     return float(np.count_nonzero(mask) * dt)
 
-# ------------------ Single candidate evaluation (FIXED) ------------------
-def evaluate_strategy_fixed(params: Dict[str, Any], sim: Dict[str, Any]):
+# ------------------ Single candidate evaluation ------------------
+def evaluate_strategy(params: Dict[str, Any], sim: Dict[str, Any]):
     """
-    FIXED: params = {heading_offset_deg, uav_speed, drops=[t1,t2,t3], fuses=[d1,d2,d3]}
+    params = {heading_offset_deg, uav_speed, drops=[t1,t2,t3], fuses=[d1,d2,d3]}
     sim    = {dt,nphi,nz,backend,workers,chunk,block,fp32,margin,inner_log,inner_log_every,timegrid_mode,masking_mode}
     return total_seconds, per_bomb_seconds(list), misc(dict)
-    
-    Uses corrected evaluation logic that matches Q3Drawer calculations.
     """
     heading = heading_to_origin() + math.radians(params["heading_offset_deg"])
     uav_speed = params["uav_speed"]
@@ -219,7 +211,7 @@ def evaluate_strategy_fixed(params: Dict[str, Any], sim: Dict[str, Any]):
         drops_pos.append(drop)
         t_expls.append(td + fd)
 
-    # Time grid (union of effective intervals), with ground clipping per bomb
+    # Time grid (union of effective intervals), with ground clipping per bomb          # NEW
     hit_time = float(np.linalg.norm(Q1.M1_INIT - Q1.FAKE_TARGET_ORIGIN) / Q1.MISSILE_SPEED)
     if sim.get("timegrid_mode", "union") == "union":
         intervals = []
@@ -250,13 +242,13 @@ def evaluate_strategy_fixed(params: Dict[str, Any], sim: Dict[str, Any]):
     # Cylinder samples
     pts = Q1.PreCalCylinderPoints(sim["nphi"], sim["nz"], dtype=dtype)
 
-    # Chunked evaluation using FIXED function
+    # Chunked evaluation
     total_chunks = (len(t_grid) + sim["chunk"] - 1) // sim["chunk"]
     chunks = []
     for chunk_id, i in enumerate(range(0, len(t_grid), sim["chunk"]), start=1):
         chunks.append((i, t_grid[i:i+sim["chunk"]], bombs_expl, t_expls, pts,
-                       sim["margin"], sim["block"], chunk_id, total_chunks, sim["inner_log_every"],
-                       sim["masking_mode"], sim.get("strict_validation", False)))
+                       sim["margin"], sim["block"], chunk_id, total_chunks, sim["inner_log_every"],  # CHG: pass masking_mode
+                       sim["masking_mode"]))
 
     mask_union = np.zeros_like(t_grid, dtype=bool)
     masks_each = [np.zeros_like(t_grid, dtype=bool) for _ in range(3)]
@@ -266,7 +258,7 @@ def evaluate_strategy_fixed(params: Dict[str, Any], sim: Dict[str, Any]):
         info(f"Candidate start: {total_chunks} time-chunks (dt={sim['dt']}, nphi={sim['nphi']}, nz={sim['nz']})")
 
     with pool_cls(max_workers=sim["workers"]) as pool:
-        futs = {pool.submit(eval_chunk_union_fixed, args): args[7] for args in chunks}  # Use FIXED function
+        futs = {pool.submit(eval_chunk_union, args): args[7] for args in chunks}
         done = 0
         report_every = max(1, total_chunks // 10)
         for fut in as_completed(futs):
@@ -300,7 +292,7 @@ def evaluate_strategy_fixed(params: Dict[str, Any], sim: Dict[str, Any]):
 # Worker wrapper (Windows-friendly)
 def eval_one_pack(pack: Tuple[Dict[str, Any], Dict[str, Any]]):
     params, sim = pack
-    total, per_bomb, misc = evaluate_strategy_fixed(params, sim)  # Use FIXED function
+    total, per_bomb, misc = evaluate_strategy(params, sim)
     return total, per_bomb, misc, params
 
 # ------------------ Excel export ------------------
@@ -357,7 +349,7 @@ def save_convergence_plot(history, path="q3_convergence.png", shade=False):
         shade_span(p2, "C1", "Stage2 (refine)")
         shade_span(p3, "C2", "Coordinate descent")
     plt.xlabel("Evaluations"); plt.ylabel("Best covered time (s)")
-    plt.title("Q3 Convergence (search / refinement) - FIXED VERSION")
+    plt.title("Q3 Convergence (search / refinement)")
     if len(ys):
         i_best = int(np.argmax(ys))
         plt.scatter([xs[i_best]], [ys[i_best]], s=36, zorder=3)
@@ -391,7 +383,7 @@ def coordinate_descent(seed_params: Dict[str, Any],
             p["fuses"][i] = f
 
     cur = dict(seed_params)
-    total, _, _ = evaluate_strategy_fixed(cur, sim)  # Use FIXED function
+    total, _, _ = evaluate_strategy(cur, sim)
     best_val = total; best_params = dict(cur)
     global_best_total[0] = max(global_best_total[0], best_val)
     eval_counter[0] += 1
@@ -424,7 +416,7 @@ def coordinate_descent(seed_params: Dict[str, Any],
                 elif key == "f3":
                     f3 = within(f3 + sgn*step, *bounds["fuse"]); trial["fuses"]=[f1,f2,f3]
                 repair_time_vars(trial)
-                val, _, _ = evaluate_strategy_fixed(trial, sim)  # Use FIXED function
+                val, _, _ = evaluate_strategy(trial, sim)
                 eval_counter[0] += 1
                 if val > best_val:
                     best_val = val; best_params = dict(trial); improved = True
@@ -438,62 +430,57 @@ def coordinate_descent(seed_params: Dict[str, Any],
 
 # ------------------ Main ------------------
 def main():
-    ap = argparse.ArgumentParser("Q3 — three-bomb coverage optimization (FIXED VERSION)")
+    ap = argparse.ArgumentParser("Q3 — three-bomb coverage optimization (Windows-friendly)")
 
-    # Time limits
-    ap.add_argument("--max_time_minutes", type=float, default=30.0, help="Maximum runtime in minutes")
-    ap.add_argument("--max_evaluations", type=int, default=10000, help="Maximum number of evaluations")
-
-    # Inner evaluation (accuracy & parallel) - OPTIMIZED DEFAULTS
-    ap.add_argument("--dt", type=float, default=0.005)  # Increased from 0.003
-    ap.add_argument("--nphi", type=int, default=240)    # Reduced from 360
-    ap.add_argument("--nz", type=int, default=5)        # Reduced from 7
+    # Inner evaluation (accuracy & parallel)
+    ap.add_argument("--dt", type=float, default=0.003)
+    ap.add_argument("--nphi", type=int, default=360)
+    ap.add_argument("--nz", type=int, default=7)
     ap.add_argument("--backend", choices=["process","thread"], default="thread")
-    ap.add_argument("--workers", type=int, default=min(4, os.cpu_count() or 1))  # Limited workers
-    ap.add_argument("--chunk", type=int, default=600)   # Reduced from 900
-    ap.add_argument("--block", type=int, default=2048)  # Reduced from 4096
+    ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--chunk", type=int, default=900)
+    ap.add_argument("--block", type=int, default=4096)
     ap.add_argument("--margin", type=float, default=1e-12)
     ap.add_argument("--fp32", action="store_true")
     ap.add_argument("--inner_log", action="store_true")
-    ap.add_argument("--inner_log_every", type=int, default=20)  # Less frequent logging
+    ap.add_argument("--inner_log_every", type=int, default=10)
     ap.add_argument("--timegrid_mode", choices=["union","full"], default="union")
-    ap.add_argument("--masking_mode", choices=["segment","cone"], default="segment")
-    ap.add_argument("--strict_validation", action="store_true", help="Use stricter validation to match Q3Drawer")
+    ap.add_argument("--masking_mode", choices=["segment","cone"], default="segment")  # NEW
 
     # Outer candidates
     ap.add_argument("--outer_backend", choices=["process","thread","none"], default="process")
     ap.add_argument("--search_workers", type=int, default=max(1,(os.cpu_count() or 1)))
 
-    # Stage1 search space - REDUCED FOR FASTER EXECUTION
-    ap.add_argument("--heading_min_deg", type=float, default=-1.5)  # Narrowed from -2.0
-    ap.add_argument("--heading_max_deg", type=float, default=+1.5)  # Narrowed from +2.0
-    ap.add_argument("--heading_step_deg", type=float, default=0.75) # Increased from 0.5
+    # Stage1 search space
+    ap.add_argument("--heading_min_deg", type=float, default=-2.0)
+    ap.add_argument("--heading_max_deg", type=float, default=+2.0)
+    ap.add_argument("--heading_step_deg", type=float, default=0.5)
     ap.add_argument("--speed_min", type=float, default=120.0)
     ap.add_argument("--speed_max", type=float, default=140.0)
-    ap.add_argument("--speed_step", type=float, default=20.0)       # Increased from 10.0
+    ap.add_argument("--speed_step", type=float, default=10.0)
     ap.add_argument("--t1_min", type=float, default=0.0)
-    ap.add_argument("--t1_max", type=float, default=5.0)            # Reduced from 6.0
-    ap.add_argument("--t1_step", type=float, default=1.5)           # Increased from 1.0
-    ap.add_argument("--gap12_min", type=float, default=1.5)         # Increased from 1.0
-    ap.add_argument("--gap12_max", type=float, default=3.5)         # Reduced from 4.0
-    ap.add_argument("--gap12_step", type=float, default=1.5)        # Increased from 1.0
-    ap.add_argument("--gap23_min", type=float, default=1.5)         # Increased from 1.0
-    ap.add_argument("--gap23_max", type=float, default=3.5)         # Reduced from 4.0
-    ap.add_argument("--gap23_step", type=float, default=1.5)        # Increased from 1.0
+    ap.add_argument("--t1_max", type=float, default=6.0)
+    ap.add_argument("--t1_step", type=float, default=1.0)
+    ap.add_argument("--gap12_min", type=float, default=1.0)
+    ap.add_argument("--gap12_max", type=float, default=4.0)
+    ap.add_argument("--gap12_step", type=float, default=1.0)
+    ap.add_argument("--gap23_min", type=float, default=1.0)
+    ap.add_argument("--gap23_max", type=float, default=4.0)
+    ap.add_argument("--gap23_step", type=float, default=1.0)
     ap.add_argument("--fuse_min", type=float, default=3.0)
-    ap.add_argument("--fuse_max", type=float, default=7.0)          # Reduced from 8.0
-    ap.add_argument("--fuse_step", type=float, default=2.0)         # Increased from 1.0
+    ap.add_argument("--fuse_max", type=float, default=8.0)
+    ap.add_argument("--fuse_step", type=float, default=1.0)
 
-    # Stage2 refinement - REDUCED COMPLEXITY
+    # Stage2 refinement
     ap.add_argument("--stage2_enable", action="store_true", help="enable Stage2 refinement")
-    ap.add_argument("--topk", type=int, default=10)            # Reduced from 20
-    ap.add_argument("--stage2_span_steps", type=int, default=1, help="±span_steps * step")  # Reduced from 2
-    ap.add_argument("--stage2_heading_step_deg", type=float, default=0.3)  # Increased from 0.2
-    ap.add_argument("--stage2_speed_step", type=float, default=8.0)        # Increased from 5.0
-    ap.add_argument("--stage2_t_step", type=float, default=0.8)            # Increased from 0.5
-    ap.add_argument("--stage2_fuse_step", type=float, default=0.8)         # Increased from 0.5
-    ap.add_argument("--stage2_batch_size", type=int, default=1000)         # Reduced from 2000
-    ap.add_argument("--stage2_max_cands", type=int, default=5000)          # Reduced from 20000
+    ap.add_argument("--topk", type=int, default=20)
+    ap.add_argument("--stage2_span_steps", type=int, default=2, help="±span_steps * step")
+    ap.add_argument("--stage2_heading_step_deg", type=float, default=0.2)
+    ap.add_argument("--stage2_speed_step", type=float, default=5.0)
+    ap.add_argument("--stage2_t_step", type=float, default=0.5)
+    ap.add_argument("--stage2_fuse_step", type=float, default=0.5)
+    ap.add_argument("--stage2_batch_size", type=int, default=2000)
+    ap.add_argument("--stage2_max_cands", type=int, default=20000)
 
     # Coordinate Descent (default ON; use --no_cd to disable)
     ap.add_argument("--cd_enable", action="store_true", default=True, help="enable coordinate descent (default ON)")
@@ -510,21 +497,13 @@ def main():
     os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
     os.environ.setdefault("OMP_NUM_THREADS", "1")
 
-    # Initialize time and evaluation tracking
-    start_time = time.time()
-    max_time_seconds = args.max_time_minutes * 60.0
-
     info("="*90)
-    info("Start Q3 optimization: FIXED VERSION - matches Q3Drawer calculations")
-    info(f"Time limit: {args.max_time_minutes:.1f} minutes ({max_time_seconds:.0f}s)")
-    info(f"Evaluation limit: {args.max_evaluations}")
-    info("OPTIMIZED: Reduced search space and parameters for faster execution")
+    info("Start Q3 optimization: cooperative masking + ground clipping + segment-occlusion (default)")
     info(f"Q1 consts: MISSILE_SPEED={Q1.MISSILE_SPEED} m/s, SMOG_R={Q1.SMOG_R} m, "
          f"SMOG_EFFECT_TIME={Q1.SMOG_EFFECT_TIME} s, SMOG_SINK_SPEED={Q1.SMOG_SINK_SPEED} m/s")
     info(f"Missile init: {Q1.M1_INIT}, Fake target: {Q1.FAKE_TARGET_ORIGIN}, FY1 init: {Q1.FY1_INIT}")
     info(f"TRUE_TARGET (for cheap test): {TRUE_TGT}")
     info(f"Masking mode = {args.masking_mode}")
-    info("FIXED: Removed overly restrictive distance test that was causing false negatives")
 
     # Inner sim config
     sim = dict(
@@ -534,8 +513,7 @@ def main():
         margin=args.margin, fp32=args.fp32,
         inner_log=args.inner_log, inner_log_every=max(1, args.inner_log_every),
         timegrid_mode=args.timegrid_mode,
-        masking_mode=args.masking_mode,
-        strict_validation=args.strict_validation,
+        masking_mode=args.masking_mode,  # NEW
     )
     info(f"Sim: {sim}")
     info(f"Outer parallel: {args.outer_backend}, workers={args.search_workers}")
@@ -575,28 +553,12 @@ def main():
     eval_counter = [0]
     global_best_total = [0.0]  # maintained across all phases
 
-    # Helper function to check time and evaluation limits
-    def check_limits():
-        elapsed_time = time.time() - start_time
-        if elapsed_time > max_time_seconds:
-            info(f"TIME LIMIT REACHED: {elapsed_time:.1f}s > {max_time_seconds:.0f}s")
-            return True
-        if eval_counter[0] >= args.max_evaluations:
-            info(f"EVALUATION LIMIT REACHED: {eval_counter[0]} >= {args.max_evaluations}")
-            return True
-        return False
-
     # Batched evaluation runner
     def run_pool_evaluate(sim_local: Dict[str,Any], cands: List[Dict[str,Any]], phase_label: str,
                           batch_size: int = 2000) -> Dict[str, Any]:
         nonlocal_best = None
         total = len(cands)
         info(f"{phase_label}: plan to evaluate {total} candidates in batches of {batch_size}")
-        
-        # Check limits before starting
-        if check_limits():
-            info(f"{phase_label}: Skipped due to limits")
-            return nonlocal_best
 
         def submit_batch(executor, start):
             end = min(start + batch_size, total)
@@ -662,25 +624,15 @@ def main():
 
     # Stage1
     t1_a = time.time()
-    if check_limits():
-        info("Stage1 skipped due to limits")
-        return
     best = run_pool_evaluate(sim, candidates, "stage1", batch_size=2000)
     t1_b = time.time()
     if best is None:
         info("Stage1 found no feasible solution. Expand ranges or refine steps.")
         return
     info(f"Stage1 done: {t1_b - t1_a:.2f}s, best={best['total']:.6f}s | {best['params']}")
-    
-    # Check limits after Stage1
-    if check_limits():
-        info("Stopping after Stage1 due to limits")
-        write_excel(best, path="result1.xlsx")
-        save_convergence_plot(conv_hist, path="q3_convergence.png", shade=False)
-        return
 
     # Stage2 refinement
-    if args.stage2_enable and not check_limits():
+    if args.stage2_enable:
         def neighbors(seed: Dict[str, Any]) -> List[Dict[str, Any]]:
             hd0 = seed["heading_offset_deg"]; sp0 = seed["uav_speed"]
             t1, t2, t3 = seed["drops"]; f1, f2, f3 = seed["fuses"]
@@ -727,7 +679,7 @@ def main():
         info(f"Stage2 done: {t2_b - t2_a:.2f}s, current best={best['total']:.6f}s | {best['params']}")
 
     # Coordinate Descent
-    if args.cd_enable and not check_limits():
+    if args.cd_enable:
         steps = dict(
             heading_offset_deg=args.cd_step_heading,
             uav_speed=args.cd_step_speed,
@@ -750,7 +702,7 @@ def main():
             rounds=args.cd_rounds, conv_hist=conv_hist, eval_counter=eval_counter,
             global_best_total=global_best_total
         )
-        val_final, per_bomb_final, misc_final = evaluate_strategy_fixed(best_params_after_cd, sim)  # Use FIXED function
+        val_final, per_bomb_final, misc_final = evaluate_strategy(best_params_after_cd, sim)
         eval_counter[0] += 1
         global_best_total[0] = max(global_best_total[0], val_final)
         conv_hist.append(dict(idx=eval_counter[0], best=global_best_total[0], phase="cd"))
@@ -761,14 +713,8 @@ def main():
             info(f"Coordinate descent did not beat current best ({best['total']:.6f}s)")
 
     # Final outputs
-    final_time = time.time()
-    elapsed_total = final_time - start_time
     info("="*90)
-    info(f"OPTIMIZATION COMPLETED")
-    info(f"Total runtime: {elapsed_total:.2f}s ({elapsed_total/60.0:.2f} minutes)")
-    info(f"Total evaluations: {eval_counter[0]}")
     info(f"Final best union covered time = {best['total']:.6f} s | params: {best['params']}")
-    info("NOTE: This result should now match Q3Drawer's calculation!")
     for k, s in enumerate(best["secs_each"], 1):
         info(f"Bomb#{k} single covered time = {s:.6f} s")
     for k in range(3):

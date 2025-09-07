@@ -1,5 +1,5 @@
 python Q3Drawer.py ^
-  --xlsx C:\Users\tsawke\Desktop\CUMCM2025\FinalSolution\Q3\result1.xlsx ^
+  --xlsx result1.xlsx ^
   --out q3_anim.mp4 ^
   --anim_seconds 50 ^
   --fps 24 ^

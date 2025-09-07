@@ -242,7 +242,7 @@ def _best_candidate_for_Te_speed(uavInit, uavName, T_e, spd, dt, lateral_scales=
             return
         # XY 可达性 - 放宽速度容差到5%
         dx, dy = cand[0] - uavInit[0], cand[1] - uavInit[1]
-        req_v = math.hypot(dx, dy) / max(T_e, 1e-9)
+    req_v = math.hypot(dx, dy) / max(T_e, 1e-9)
         if req_v > spd * 1.05:  # 5% 容差
             return
         heading = math.atan2(dy, dx)
@@ -612,7 +612,7 @@ def main():
             out[i] = min(hi, max(lo, out[i]))
         for i in range(3,6):
             out[i] = min(140.0, max(70.0, out[i]))
-        return out
+    return out
 
     def _tri_from_x(x):
         # FY1固定，只更新FY2和FY3

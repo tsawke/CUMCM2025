@@ -1,0 +1,96 @@
+====================================================================================================
+COMPREHENSIVE SMOKE BOMB DEPLOYMENT OPTIMIZATION REPORT
+Algorithm: Enhanced Particle Swarm Optimization (PSO)
+====================================================================================================
+Report Generated: 2025-09-07 10:35:59
+Total Computation Time: 16685.902 seconds
+Total Effective Shielding Duration: 6.412146 seconds
+
+PROBLEM SETUP:
+--------------------------------------------------
+Real Target: Cylinder at [  0. 200.   0.] with radius 7.0m, height 10.0m
+Fake Target: Point at [0. 0. 0.]
+Missile M1: Initial position [20000.     0.  2000.], speed 300.0m/s
+UAV FY1: Initial position [17800.     0.  1800.], speed range [70.0, 140.0]m/s
+Smoke Parameters: Radius 10.0m, sink speed 3.0m/s, duration 20.0s
+
+OPTIMAL SOLUTION:
+--------------------------------------------------
+UAV Fixed Speed: 140.000000 m/s
+UAV Fixed Heading: 0.087151 radians (4.993 degrees)
+UAV Direction Vector: [0.996205, 0.087040, 0.000000]
+
+DETAILED BOMB DEPLOYMENT PLAN:
+--------------------------------------------------
+Smoke Bomb 1:
+  Drop Time: 0.000000 s
+  Detonation Delay: 0.002146 s
+  Detonation Time: 0.002146 s
+  Drop Position: [17800.000, 0.000, 1800.000] m
+  Detonation Position: [17800.299, 0.026, 1800.000] m
+  Individual Shielding Duration: 2.570000 s
+  Number of Shielding Intervals: 1
+    Interval 1: [4.8421, 7.4121] s (duration: 2.5700s)
+
+Smoke Bomb 2:
+  Drop Time: 1.000000 s
+  Detonation Delay: 0.000000 s
+  Detonation Time: 1.000000 s
+  Drop Position: [17939.469, 12.186, 1800.000] m
+  Detonation Position: [17939.469, 12.186, 1800.000] m
+  Individual Shielding Duration: 4.290000 s
+  Number of Shielding Intervals: 1
+    Interval 1: [1.0000, 5.2900] s (duration: 4.2900s)
+
+Smoke Bomb 3:
+  Drop Time: 26.000000 s
+  Detonation Delay: 7.661027 s
+  Detonation Time: 33.661027 s
+  Drop Position: [21426.185, 316.827, 1800.000] m
+  Detonation Position: [22494.659, 410.182, 1512.119] m
+  Individual Shielding Duration: 0.000000 s
+  Number of Shielding Intervals: 0
+
+PERFORMANCE ANALYSIS:
+--------------------------------------------------
+Sum of Individual Durations: 6.860000 s
+Merged Total Duration: 6.412146 s
+Overlap Reduction: 0.447854 s
+Overlap Percentage: 6.53%
+
+OPTIMIZATION CONVERGENCE HISTORY:
+--------------------------------------------------
+Iteration | Best Fitness (s)
+------------------------------
+       0 |     0.000000
+       5 |     2.560000
+      10 |     3.550000
+      15 |     4.000000
+      20 |     5.580000
+      25 |     6.410000
+      30 |     6.410000
+      35 |     6.410000
+      40 |     6.410000
+      45 |     6.410000
+      50 |     6.410000
+      55 |     6.410000
+      60 |     6.410000
+      65 |     6.410000
+      70 |     6.410000
+      75 |     6.410000
+      80 |     6.410000
+      85 |     6.412103
+      90 |     6.412134
+      95 |     6.412146
+     100 |     6.412146
+
+CONSTRAINT VERIFICATION:
+--------------------------------------------------
+UAV Speed: 140.000 m/s ∈ [70.0, 140.0] → SATISFIED
+Drop Interval 1→2: 1.000 s ≥ 1.0 → SATISFIED
+Drop Interval 2→3: 25.000 s ≥ 1.0 → SATISFIED
+All Detonations Above Ground: [np.float64(1799.9999774047965), np.float64(1800.0), np.float64(1512.1189976426904)] → SATISFIED
+
+====================================================================================================
+END OF COMPREHENSIVE REPORT
+====================================================================================================

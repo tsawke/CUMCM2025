@@ -1,0 +1,134 @@
+========================================================================================================================
+COMPREHENSIVE MULTI-UAV SMOKE BOMB DEPLOYMENT OPTIMIZATION REPORT
+Problem 5: 5 UAVs (FY1-FY5) vs 3 Missiles (M1, M2, M3)
+Algorithm: Enhanced Iterative Differential Evolution with Convergence Tracking
+========================================================================================================================
+Report Generated: 2025-09-07 07:08:34
+Total Computation Time: 2904.615 seconds
+Number of Optimization Iterations: 20
+Final Total Effectiveness: 7.500000 seconds
+
+PROBLEM CONFIGURATION:
+------------------------------------------------------------
+Real Target: Cylindrical target at [  0 200   0] with radius 7m, height 10m
+Fake Target: Point at origin [0, 0, 0] (missile destination)
+Missiles:
+  M1: Initial position [20000     0  2000], flight time 67.00s
+  M2: Initial position [19000   600  2100], flight time 63.75s
+  M3: Initial position [18000  -600  1900], flight time 60.37s
+Missile Speed: 300 m/s
+UAVs:
+  FY1: Initial position [17800     0  1800], speed range [70, 140] m/s, max bombs 3
+  FY2: Initial position [12000  1400  1400], speed range [70, 140] m/s, max bombs 3
+  FY3: Initial position [ 6000 -3000   700], speed range [70, 140] m/s, max bombs 3
+  FY4: Initial position [11000  2000  1800], speed range [70, 140] m/s, max bombs 3
+  FY5: Initial position [13000 -2000  1300], speed range [70, 140] m/s, max bombs 3
+Smoke Parameters: Radius 10m, sink speed 3m/s, duration 20s
+Drop Interval Constraint: 1s minimum between drops from same UAV
+
+OPTIMIZATION CONVERGENCE ANALYSIS:
+------------------------------------------------------------
+Iter | Total Effectiveness (s) | Improvement (s) | UAVs Solved | Computation Time (s)
+-------------------------------------------------------------------------------------
+   1 |             7.500000 |      7.500000 |          0 |          271.106
+   2 |             7.500000 |      0.000000 |          2 |          138.167
+   3 |             7.500000 |      0.000000 |          2 |          137.756
+   4 |             7.500000 |      0.000000 |          2 |          139.479
+   5 |             7.500000 |      0.000000 |          2 |          139.655
+   6 |             7.500000 |      0.000000 |          2 |          139.892
+   7 |             7.500000 |      0.000000 |          2 |          139.719
+   8 |             7.500000 |      0.000000 |          2 |          140.061
+   9 |             7.500000 |      0.000000 |          2 |          139.700
+  10 |             7.500000 |      0.000000 |          2 |          139.786
+  11 |             7.500000 |      0.000000 |          2 |          139.626
+  12 |             7.500000 |      0.000000 |          2 |          139.690
+  13 |             7.500000 |      0.000000 |          2 |          140.125
+  14 |             7.500000 |      0.000000 |          2 |          139.489
+  15 |             7.500000 |      0.000000 |          2 |          138.665
+  16 |             7.500000 |      0.000000 |          2 |          138.517
+  17 |             7.500000 |      0.000000 |          2 |          137.090
+  18 |             7.500000 |      0.000000 |          2 |          135.182
+  19 |             7.500000 |      0.000000 |          2 |          136.012
+  20 |             7.500000 |      0.000000 |          2 |          134.900
+
+FINAL DEPLOYMENT STRATEGY:
+------------------------------------------------------------
+Total Smoke Bombs Deployed: 2
+Total System Effectiveness: 7.500000 seconds
+Average Effectiveness per Bomb: 3.750000 seconds
+
+UAV-SPECIFIC DEPLOYMENT DETAILS:
+------------------------------------------------------------
+UAV FY1:
+  Status: ACTIVE DEPLOYMENT
+  Optimized Speed: 70.000 m/s
+  Optimized Heading: 3.107083 rad (178.02°)
+  Number of Smoke Bombs: 1
+  Total Effectiveness: 4.600000 s
+  Average per Bomb: 4.600000 s
+    Smoke Bomb 1:
+      Drop Time: 0.610s
+      Detonation Delay: 2.721s
+      Detonation Position: (17335.74, -44.89, 1763.72) m
+      Effectiveness: 4.600000s
+      Target Missile: M1
+
+UAV FY2:
+  Status: NO VALID DEPLOYMENT FOUND
+
+UAV FY3:
+  Status: ACTIVE DEPLOYMENT
+  Optimized Speed: 130.000 m/s
+  Optimized Heading: 1.800702 rad (103.17°)
+  Number of Smoke Bombs: 1
+  Total Effectiveness: 2.900000 s
+  Average per Bomb: 2.900000 s
+    Smoke Bomb 1:
+      Drop Time: 17.934s
+      Detonation Delay: 5.146s
+      Detonation Position: (4859.34, 23.04, 570.27) m
+      Effectiveness: 2.900000s
+      Target Missile: M3
+
+UAV FY4:
+  Status: NO VALID DEPLOYMENT FOUND
+
+UAV FY5:
+  Status: NO VALID DEPLOYMENT FOUND
+
+MISSILE COVERAGE ANALYSIS:
+------------------------------------------------------------
+Missile M1:
+  Assigned Smoke Bombs: 1
+  Total Shielding Time: 4.600000s
+  Flight Time Coverage: 6.87%
+  Flight Duration: 67.00s
+Missile M2:
+  Assigned Smoke Bombs: 0
+  Total Shielding Time: 0.000000s
+  Flight Time Coverage: 0.00%
+  Flight Duration: 63.75s
+Missile M3:
+  Assigned Smoke Bombs: 1
+  Total Shielding Time: 2.900000s
+  Flight Time Coverage: 4.80%
+  Flight Duration: 60.37s
+
+STATISTICAL PERFORMANCE ANALYSIS:
+------------------------------------------------------------
+Maximum Single Bomb Effectiveness: 4.600000 s
+Minimum Single Bomb Effectiveness: 2.900000 s
+Mean Effectiveness: 3.750000 s
+Standard Deviation: 0.850000 s
+Coefficient of Variation: 22.67%
+
+Effectiveness Distribution:
+  <1s: 0 bombs (0.0%)
+  1-2s: 0 bombs (0.0%)
+  2-5s: 2 bombs (100.0%)
+  5-10s: 0 bombs (0.0%)
+  >10s: 0 bombs (0.0%)
+
+========================================================================================================================
+END OF COMPREHENSIVE OPTIMIZATION REPORT
+========================================================================================================================
